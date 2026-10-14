@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fit &amp; Fuel · 健身与营养规划 / Training &amp; Nutrition Planner</title>
+<style>
+  :root {
+    --bg: #0e1412;
+    --panel: #151d1a;
+    --panel-2: #1c2723;
+    --line: #293632;
+    --text: #e4ece8;
+    --muted: #8ea29b;
+    --accent: #7fd8a4;
+    --accent-ink: #0b1310;
+    --warn: #f0c35a;
+    --danger: #ff8170;
+    --info: #86c5ff;
+    --sans: "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  button, input, select { font: inherit; color: inherit; }
+
+  .app {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  /* ---------- 侧栏表单 ---------- */
+  aside.side {
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    padding: 22px 20px 28px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .brand h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: .01em; }
+  .brand .mark { color: var(--accent); }
+  .lang {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .lang:hover { border-color: var(--accent); }
+  .sub { color: var(--muted); margin: 6px 0 18px; font-size: 13px; }
+
+  .group { margin-bottom: 14px; }
+  .group h3 {
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .f input, .f select {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+    outline: none;
+    width: 100%;
+    transition: border-color .2s;
+  }
+  .f input:focus, .f select:focus { border-color: var(--accent); }
+  .f input::placeholder { color: #5b6b65; }
+  .full { grid-column: 1 / -1; }
+  .err { color: var(--danger); font-size: 12px; min-height: 18px; margin-top: 6px; }
+  .fine { color: var(--muted); font-size: 11px; margin-top: 16px; line-height: 1.6; }
+
+  /* ---------- 结果区 ---------- */
+  main.out { padding: 26px 30px 60px; min-width: 0; }
+  .hero {
+    background:
+      linear-gradient(120deg, rgba(127,216,164,.10), transparent 55%),
+      var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .hero h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
+  .hero p { margin: 0; color: var(--muted); }
+  .hero .pill {
+    display: inline-block; margin-top: 10px; font-family: var(--mono); font-size: 11px;
+    padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted);
+    margin-right: 6px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .stat .k { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+  .stat .v { font-family: var(--mono); font-size: 20px; margin-top: 2px; white-space: nowrap; }
+  .stat .v small { font-size: 11px; color: var(--muted); margin-left: 3px; white-space: nowrap; }
+  .stat .d { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .warns { display: grid; gap: 8px; margin: 14px 0; }
+  .warn {
+    border-radius: 10px;
+    padding: 10px 14px;
+    border: 1px solid;
+    font-size: 13px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .warn b { white-space: nowrap; font-weight: 700; }
+  .warn.danger { border-color: rgba(255,129,112,.5); background: rgba(255,129,112,.08); color: #ffc2b8; }
+  .warn.warn-lv { border-color: rgba(240,195,90,.5); background: rgba(240,195,90,.07); color: #f6e0a6; }
+  .warn.info { border-color: rgba(134,197,255,.4); background: rgba(134,197,255,.06); color: #cfe6ff; }
+
+  section.block {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-top: 16px;
+  }
+  section.block > h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  section.block > h2 .no { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 500; }
+  section.block > .lede { color: var(--muted); margin: 0 0 14px; font-size: 13px; }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tab.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+
+  .week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .day {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 10px 12px;
+    min-height: 120px;
+  }
+  .day .dn { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .day .dw { font-weight: 700; font-size: 13px; margin: 2px 0 8px; color: var(--accent); }
+  .day.rest .dw { color: var(--muted); font-weight: 500; }
+  .day ul { list-style: none; padding: 0; margin: 0; }
+  .day li { font-size: 12px; padding: 4px 0; border-top: 1px dashed var(--line); }
+  .day li .sr { font-family: var(--mono); color: var(--muted); float: right; font-size: 11px; }
+  .day li .cue { display: block; color: var(--muted); font-size: 11px; }
+  .day .cardio { font-size: 11px; color: var(--info); margin-top: 6px; }
+
+  .list-note { font-size: 13px; color: #c3cdc9; margin: 12px 0 0; }
+  .list-note li { margin: 4px 0; }
+  ul.tips { margin: 6px 0 0; padding-left: 18px; color: #c3cdc9; font-size: 13px; }
+  ul.tips li { margin: 4px 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; letter-spacing: .05em; }
+  td .g { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+  td.num { font-family: var(--mono); white-space: nowrap; }
+  .table-wrap { overflow-x: auto; }
+  .meal-note { color: var(--muted); font-size: 11px; }
+  .rot td:first-child { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+
+  .foot { color: var(--muted); font-size: 11px; margin-top: 22px; line-height: 1.7; }
+
+  @media (max-width: 1100px) {
+    .week { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    aside.side { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main.out { padding: 18px 16px 50px; }
+  }
+  @media (max-width: 560px) {
+    .week { grid-template-columns: 1fr 1fr; }
+    .row2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <h1><span class="mark">◆</span> <span data-i18n="title"></span></h1>
+      <button class="lang" id="langBtn" type="button"></button>
+    </div>
+    <p class="sub" data-i18n="subtitle"></p>
+
+    <form id="form" autocomplete="off">
+      <div class="group">
+        <h3 data-i18n="g_body"></h3>
+        <div class="row2">
+          <label class="f"><span data-i18n="sex"></span><select id="f_sex"></select></label>
+          <label class="f"><span data-i18n="age"></span><input id="f_age" type="number" min="14" max="90" step="1" value="22"></label>
+          <label class="f"><span data-i18n="height"></span><input id="f_height" type="number" min="120" max="230" step="0.5" value="175"></label>
+          <label class="f"><span data-i18n="weight"></span><input id="f_weight" type="number" min="30" max="250" step="0.1" value="70"></label>
+          <label class="f full"><span data-i18n="bf"></span><input id="f_bf" type="number" min="3" max="60" step="0.1" data-i18n-ph="bf_ph"></label>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3 data-i18n="g_status"></h3>
+        <div class="row2">
+          <label class="f full"><span data-i18n="exp"></span><select id="f_exp"></select></label>
+          <label class="f"><span data-i18n="days"></span><input id="f_days" type="number" min="2" max="6" step="1" value="3"></label>
+          <label class="f"><span data-i18n="target_w"></span><input id="f_target" type="number" min="30" max="250" step="0.1" data-i18n-ph="target_ph"></label>
+          <label class="f full"><span data-i18n="life"></span><select id="f_life"></select></label>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3 data-i18n="g_goal"></h3>
+        <label class="f"><span data-i18n="goal"></span><select id="f_goal"></select></label>
+      </div>
+    </form>
+    <p class="fine" data-i18n="fine"></p>
+  </aside>
+
+  <main class="out" id="out"></main>
+</div>
+
+<script>
+/* =====================================================================
+ *  Fit & Fuel · 健身与营养规划
+ *  单文件、无依赖。数据 -> 计算 -> 渲染 三段分离,便于后续扩展。
+ * ===================================================================== */
+
+/* ---------- 界面文案(中英双语) ---------- */
+const I18N = {
+  zh: {
+    title: "Fit & Fuel",
+    subtitle: "输入身体数据与生活状况,自动生成训练与饮食安排。面向入门健身与减脂人群的营养科普工具。",
+    lang_btn: "English",
+    g_body: "身体数据", g_status: "基础与生活", g_goal: "目标",
+    sex: "性别", male: "男", female: "女",
+    age: "年龄(岁)", height: "身高(cm)", weight: "体重(kg)",
+    bf: "体脂率(%,可不填)", bf_ph: "不确定可留空",
+    exp: "健身基础", days: "每周训练天数", target_w: "目标体重(kg,可不填)", target_ph: "不确定可留空",
+    life: "生活状况", goal: "训练目标",
+    fine: "本工具为科普性质的规划参考,不构成医疗建议。有慢性病、正在用药、孕期/哺乳期、进食障碍史或未成年的人,请先咨询医生或注册营养师。",
+    err_required: "请检查必填项:年龄 14–90,身高 120–230 cm,体重 30–250 kg,训练天数 2–6。",
+    err_optional: "体脂率需在 3–60% 之间,目标体重需在 30–250 kg 之间。",
+    summary: "概览", s_bmi: "BMI", s_bmr: "基础代谢 BMR", s_tdee: "每日消耗 TDEE",
+    s_kcal: "每日目标热量", s_protein: "蛋白质", s_carb: "碳水", s_fat: "脂肪",
+    s_change: "预计每周变化", s_eta: "预计达到目标体重", kcal_unit: "kcal", per_week: "/周",
+    weeks_unit: "周", est_note: "估算值,实际以体重变化为准",
+    warn_title: "健康提示", no_warn: "未发现需要特别注意的问题。",
+    bmi_normal: "正常", bmi_low: "偏瘦", bmi_over: "超重", bmi_obese: "肥胖",
+    train: "训练计划", train_no: "02", week_n: "第 {n} 周", week_desc: [
+      "适应期:动作标准优先,RIR 3(还剩 3 次动作余力)",
+      "进阶期:每个动作加 1 组,RIR 2",
+      "强化期:接近力竭,RIR 1;够 上限次数后下次加重 2.5–5%",
+      "减载周:组数减 1,重量降 10%,恢复疲劳"
+    ],
+    rest: "休息", cardio_label: "有氧", deload_note: "第 4 周是减载周,不要硬撑。",
+    sets: "组", tips_train: "训练要点",
+    nutr: "饮食规划", nutr_no: "03", sample_day: "示例一天(第 1 天菜单)", rotation: "一周轮换(午餐与晚餐)",
+    slot_breakfast: "早餐", slot_lunch: "午餐", slot_dinner: "晚餐", slot_snack: "加餐",
+    veg_name: "蔬菜", oil_name: "食用油",
+    day_names: ["周一","周二","周三","周四","周五","周六","周日"],
+    total: "合计", day_total: "当日合计",
+    tips_life: "生活方式建议", tips_goal: "目标建议", why: "计算依据",
+    why_text: "基础代谢按 {formula} 估算,再乘以活动系数 {mult}(由生活方式与每周训练天数决定),得到每日消耗;目标热量在消耗基础上按 {delta} 调整。蛋白质按 {pg} g/kg 体重设定,脂肪 0.8 g/kg,其余热量由碳水补足。",
+    formula_mifflin: "Mifflin-St Jeor 公式", formula_katch: "Katch-McArdle 公式(基于瘦体重)",
+    foot: "食物营养数值为常见食材的近似值,来源于通用营养成分表,实际因品牌、烹饪方式与份量而异。",
+    cardio_detail: { lose: "每周约 150 分钟中等强度有氧(快走、骑车、椭圆机)", tone: "每周 2 次、每次 20–30 分钟有氧", build: "每周 2 次、每次 15–20 分钟轻度有氧即可", glutes: "每日 8000 步左右,加 1–2 次 20 分钟有氧", thighs_strong: "每周 1–2 次 15–20 分钟有氧", thighs_toned: "每周 2–3 次 20–30 分钟有氧(快走或爬坡)" },
+    w_bmi_low: { lv: "danger", text: "当前 BMI 为 {bmi},低于 18.5(体重偏轻)。增重、增肌比减脂更合适。方案已给出,但请优先保证热量充足,并咨询医生排除潜在问题。" },
+    w_target_low: { lv: "danger", text: "目标体重对应 BMI 为 {bmi},低于 18.5。过低的体重会带来营养不良、肌肉流失、骨质疏松、月经紊乱等风险。方案仍按目标生成,但建议与医生讨论目标是否合理。" },
+    w_floor: { lv: "warn", text: "按计算,每日热量为 {raw} kcal,低于安全底线 {floor} kcal。已自动提高到底线。长期热量极低会导致肌肉流失、脱发、疲劳和代谢下降。" },
+    w_fast: { lv: "warn", text: "预计每周减重约 {rate}% 体重,超过 1%。减重过快容易流失肌肉。建议放慢节奏、延长周期。" },
+    w_bf_low: { lv: "warn", text: "体脂率 {bf}% 偏低(男性低于 10%、女性低于 18% 属于低体脂)。在此基础上继续减脂风险较高。" },
+    w_thin_lose: { lv: "warn", text: "你的 BMI 已经偏低,却选择了减脂目标。建议改为增肌或塑形目标,先把身体素质与体重稳定下来。" },
+    w_thin_gain: { lv: "info", text: "当前偏瘦,方案以增重、力量与热量充足为主。进食节奏可以多样一些,每天多餐,避免空腹训练。" },
+    w_minor: { lv: "info", text: "未满 18 岁:青少年生长发育需要充足营养。饮食与训练强度请与家长及医生商量,本方案仅作科普参考。" },
+    w_senior: { lv: "info", text: "60 岁及以上:开始训练前建议先做体检,动作以安全、可控为主,逐步增加强度。" }
+  },
+  en: {
+    title: "Fit & Fuel",
+    subtitle: "Enter your body stats and lifestyle to get an auto-generated training and eating plan. A nutrition primer for beginners and people trying to lose fat.",
+    lang_btn: "中文",
+    g_body: "Body stats", g_status: "Experience & lifestyle", g_goal: "Goal",
+    sex: "Sex", male: "Male", female: "Female",
+    age: "Age (years)", height: "Height (cm)", weight: "Weight (kg)",
+    bf: "Body fat (%, optional)", bf_ph: "Leave blank if unsure",
+    exp: "Training experience", days: "Training days / week", target_w: "Target weight (kg, optional)", target_ph: "Leave blank if unsure",
+    life: "Lifestyle", goal: "Training goal",
+    fine: "This is an educational planning tool, not medical advice. If you have a medical condition, take medication, are pregnant or breastfeeding, have a history of eating disorders, or are under 18, please consult a doctor or registered dietitian first.",
+    err_required: "Please check the required fields: age 14–90, height 120–230 cm, weight 30–250 kg, training days 2–6.",
+    err_optional: "Body fat must be 3–60%. Target weight must be 30–250 kg.",
+    summary: "Overview", s_bmi: "BMI", s_bmr: "Basal metabolic rate", s_tdee: "Total daily energy (TDEE)",
+    s_kcal: "Daily calorie target", s_protein: "Protein", s_carb: "Carbs", s_fat: "Fat",
+    s_change: "Expected change per week", s_eta: "Estimated time to target", kcal_unit: "kcal", per_week: "/wk",
+    weeks_unit: "weeks", est_note: "Estimate only; actual results depend on your weight trend.",
+    warn_title: "Health notes", no_warn: "No specific concerns detected.",
+    bmi_normal: "Normal", bmi_low: "Underweight", bmi_over: "Overweight", bmi_obese: "Obese",
+    train: "Training plan", train_no: "02", week_n: "Week {n}", week_desc: [
+      "Adaptation: form first, RIR 3 (three reps left in the tank)",
+      "Progression: add 1 set per exercise, RIR 2",
+      "Overload: close to failure, RIR 1; when you hit the top of the range, add 2.5–5% load",
+      "Deload: one set fewer, about 10% lighter, let fatigue clear"
+    ],
+    rest: "Rest", cardio_label: "Cardio", deload_note: "Week 4 is a deload week. Do not push through it.",
+    sets: "sets", tips_train: "Key points",
+    nutr: "Nutrition plan", nutr_no: "03", sample_day: "Sample day (Day 1 menu)", rotation: "Weekly rotation (lunch & dinner)",
+    slot_breakfast: "Breakfast", slot_lunch: "Lunch", slot_dinner: "Dinner", slot_snack: "Snack",
+    veg_name: "Vegetables", oil_name: "Cooking oil",
+    day_names: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+    total: "Total", day_total: "Day total",
+    tips_life: "Lifestyle tips", tips_goal: "Goal tips", why: "How this was calculated",
+    why_text: "BMR is estimated with the {formula}, multiplied by an activity factor of {mult} (from your lifestyle and weekly training days) to get daily energy use. The calorie target is that figure adjusted by {delta}. Protein is set at {pg} g per kg of body weight, fat at 0.8 g/kg, and carbs fill the remaining calories.",
+    formula_mifflin: "Mifflin-St Jeor equation", formula_katch: "Katch-McArdle equation (lean-mass based)",
+    foot: "Food values are approximations for common ingredients from general nutrition tables. Actual values vary by brand, cooking method and portion.",
+    cardio_detail: { lose: "About 150 min/week of moderate cardio (brisk walking, cycling, elliptical)", tone: "2 sessions/week, 20–30 min each", build: "2 light sessions/week, 15–20 min each, is enough", glutes: "About 8,000 steps a day, plus 1–2 cardio sessions of 20 min", thighs_strong: "1–2 cardio sessions/week, 15–20 min each", thighs_toned: "2–3 sessions/week, 20–30 min each (brisk walks or hills)" },
+    w_bmi_low: { lv: "danger", text: "Your BMI is {bmi}, below 18.5 (underweight). Gaining weight and muscle is a better focus than fat loss. The plan is shown, but prioritise enough calories and see a doctor to rule out underlying causes." },
+    w_target_low: { lv: "danger", text: "Your target weight corresponds to a BMI of {bmi}, below 18.5. Very low body weight carries risks such as malnutrition, muscle loss, bone loss and menstrual disruption. The plan is still generated for your target, but please discuss whether this goal is appropriate with a doctor." },
+    w_floor: { lv: "warn", text: "The calculated intake is {raw} kcal/day, below the safety floor of {floor} kcal. It has been raised to the floor. Very long-term low intake causes muscle loss, hair loss, fatigue and a slower metabolism." },
+    w_fast: { lv: "warn", text: "The expected loss is about {rate}% of body weight per week, above 1%. Losing weight too fast tends to cost muscle. Slow the pace and extend the timeline." },
+    w_bf_low: { lv: "warn", text: "Body fat of {bf}% is low (below 10% for men or 18% for women). Dieting further carries higher risk." },
+    w_thin_lose: { lv: "warn", text: "Your BMI is already low, but you chose a fat-loss goal. Consider a muscle-building or toning goal first, and stabilise your weight and fitness." },
+    w_thin_gain: { lv: "info", text: "You are on the lean side, so this plan focuses on weight gain, strength and enough calories. Spread food across the day and avoid training fasted." },
+    w_minor: { lv: "info", text: "Under 18: growing bodies need plenty of nutrition. Please discuss diet and training intensity with a parent or doctor. This plan is for education only." },
+    w_senior: { lv: "info", text: "Age 60 or over: a medical check-up before starting training is recommended. Keep movements controlled and build intensity gradually." }
+  }
+};
+
+/* ---------- 食物库:每 100 g 的近似值(熟重 / 干重已标注) ---------- */
+const FOODS = {
+  egg:               { name: { zh: "鸡蛋", en: "Egg" },                                   k: 143, p: 12.6, c: 0.7,  f: 9.5, max: 120 },
+  chicken_breast:    { name: { zh: "鸡胸肉(熟)", en: "Chicken breast (cooked)" },          k: 165, p: 31,   c: 0,    f: 3.6, max: 300 },
+  pork_tenderloin:   { name: { zh: "猪里脊(熟)", en: "Pork tenderloin (cooked)" },        k: 143, p: 26,   c: 0,    f: 3.5, max: 300 },
+  lean_beef:         { name: { zh: "瘦牛肉(熟)", en: "Lean beef (cooked)" },              k: 200, p: 28,   c: 0,    f: 9,   max: 300 },
+  salmon:            { name: { zh: "三文鱼(熟)", en: "Salmon (cooked)" },                 k: 206, p: 22,   c: 0,    f: 12,  max: 250 },
+  shrimp:            { name: { zh: "虾仁(熟)", en: "Shrimp (cooked)" },                   k: 99,  p: 24,   c: 0.2,  f: 0.3, max: 300 },
+  white_fish:        { name: { zh: "罗非鱼(熟)", en: "Tilapia (cooked)" },                k: 128, p: 26,   c: 0,    f: 2.7, max: 300 },
+  tofu:              { name: { zh: "北豆腐", en: "Firm tofu" },                            k: 144, p: 17,   c: 3,    f: 9,   max: 400 },
+  greek_yogurt:      { name: { zh: "无糖希腊酸奶", en: "Plain Greek yogurt" },             k: 59,  p: 10,   c: 3.6,  f: 0.4, max: 300 },
+  milk:              { name: { zh: "全脂牛奶", en: "Whole milk" },                         k: 61,  p: 3.2,  c: 4.8,  f: 3.3, max: 350 },
+  soy_milk:          { name: { zh: "无糖豆浆", en: "Unsweetened soy milk" },                k: 33,  p: 3.3,  c: 1.5,  f: 1.6, max: 400 },
+  rice_cooked:       { name: { zh: "米饭(熟)", en: "Cooked rice" },                       k: 130, p: 2.7,  c: 28,   f: 0.3, max: 300 },
+  noodles_cooked:    { name: { zh: "面条(熟)", en: "Cooked noodles" },                    k: 138, p: 4.5,  c: 25,   f: 2.1, max: 300 },
+  steamed_bun:       { name: { zh: "馒头", en: "Steamed bun" },                             k: 223, p: 7,    c: 47,   f: 1,   max: 200 },
+  whole_wheat_bread: { name: { zh: "全麦面包", en: "Whole-wheat bread" },                  k: 247, p: 13,   c: 41,   f: 3.4, max: 150 },
+  oats:              { name: { zh: "燕麦(干)", en: "Oats (dry)" },                         k: 389, p: 17,   c: 66,   f: 7,   max: 80 },
+  potato:            { name: { zh: "土豆", en: "Potato" },                                  k: 77,  p: 2,    c: 17,   f: 0.1, max: 300 },
+  sweet_potato:      { name: { zh: "红薯", en: "Sweet potato" },                            k: 86,  p: 1.6,  c: 20,   f: 0.1, max: 300 },
+  banana:            { name: { zh: "香蕉", en: "Banana" },                                  k: 89,  p: 1.1,  c: 23,   f: 0.3, max: 150 },
+  almonds:           { name: { zh: "杏仁(干)", en: "Almonds (dry)" },                      k: 579, p: 21,   c: 22,   f: 50,  max: 30 }
+};
+const VEG = { name: { zh: "西兰花/青菜", en: "Broccoli / leafy greens" }, g: 150, k: 40, p: 3 };
+const OIL = { name: { zh: "食用油", en: "Cooking oil" }, g: 5, k: 45, p: 0 };
+
+/* ---------- 动作库 ---------- */
+const EX = {
+  goblet:       { name: { zh: "高脚杯深蹲", en: "Goblet squat" },              cue: { zh: "胸口抱哑铃,膝盖与脚尖同向,下蹲到大腿接近水平", en: "Hold a dumbbell at the chest, knees track toes, go to about parallel" } },
+  squat:        { name: { zh: "杠铃深蹲", en: "Back squat" },                   cue: { zh: "核心收紧,脊柱保持中立,膝盖顺着脚尖方向", en: "Brace the core, keep a neutral spine, knees over toes" } },
+  leg_press:    { name: { zh: "腿举", en: "Leg press" },                         cue: { zh: "脚位与肩同宽,下放时腰背贴紧靠背,不要锁死膝盖", en: "Feet shoulder-width, keep your lower back on the pad, don't lock knees" } },
+  rdl:          { name: { zh: "罗马尼亚硬拉", en: "Romanian deadlift" },           cue: { zh: "髋部向后推,感受大腿后侧拉伸,背部始终挺直", en: "Push hips back, feel the hamstrings stretch, back stays flat" } },
+  deadlift:     { name: { zh: "传统硬拉", en: "Deadlift" },                      cue: { zh: "杠铃贴近小腿,用臀腿发力起身,不要先抬臀", en: "Bar close to shins, drive with legs and hips, don't shoot the hips up" } },
+  hip_thrust:   { name: { zh: "杠铃臀推", en: "Barbell hip thrust" },           cue: { zh: "肩胛靠在凳面,顶髋到顶端夹紧臀部停 1 秒", en: "Shoulder blades on the bench, drive hips up and squeeze the glutes for 1 s" } },
+  glute_bridge: { name: { zh: "臀桥", en: "Glute bridge" },                     cue: { zh: "平躺屈膝,顶髋时肋骨不外翻,顶端停 1 秒", en: "Lie with knees bent, drive hips up, keep ribs down, pause at the top" } },
+  bulgarian:    { name: { zh: "保加利亚分腿蹲", en: "Bulgarian split squat" }, cue: { zh: "后脚搭在凳上,前腿主导下蹲,身体微前倾", en: "Rear foot on a bench, front leg does the work, slight forward lean" } },
+  lunge:        { name: { zh: "弓步走", en: "Walking lunge" },                  cue: { zh: "步幅足够大,前膝不超过脚尖太多,后膝接近地面", en: "Long step, front knee doesn't shoot far past toes, back knee nearly touches" } },
+  step_up:      { name: { zh: "登阶", en: "Step-up" },                        cue: { zh: "全脚踩实台阶,用前腿蹬起,不要用后脚借力", en: "Full foot on the box, push with the front leg, don't push off the floor leg" } },
+  leg_curl:     { name: { zh: "腿弯举", en: "Leg curl" },                       cue: { zh: "慢放 2–3 秒,髋部保持贴住凳面", en: "Lower slowly over 2–3 s, keep hips on the pad" } },
+  abduction:    { name: { zh: "髋外展机", en: "Hip abduction machine" },       cue: { zh: "控制速度,感受臀中肌发力,不要借助身体摆动", en: "Control the speed, feel the outer glutes, no body swinging" } },
+  cable_kick:   { name: { zh: "绳索后踢", en: "Cable kickback" },              cue: { zh: "髋部保持稳定,由臀部发力向后伸腿,顶端停顿", en: "Keep the hips still, extend the leg from the glutes, pause at the top" } },
+  bench:        { name: { zh: "杠铃卧推", en: "Bench press" },                 cue: { zh: "肩胛收紧,杠铃下放到胸中下部,脚踩稳", en: "Retract shoulder blades, lower to mid-chest, feet planted" } },
+  pushup:       { name: { zh: "俯卧撑", en: "Push-up" },                      cue: { zh: "身体一条直线,肘部约 45 度,胸部接近地面", en: "Body in a straight line, elbows about 45°, chest near the floor" } },
+  incline:      { name: { zh: "上斜哑铃卧推", en: "Incline dumbbell press" },   cue: { zh: "凳子调到 30 度左右,重点是上胸", en: "Bench at about 30°, focus on the upper chest" } },
+  db_press:     { name: { zh: "哑铃卧推", en: "Dumbbell press" },              cue: { zh: "哑铃与胸同高再推起,动作幅度稳定", en: "Lower dumbbells to chest level, press up with a steady path" } },
+  row:          { name: { zh: "坐姿划船", en: "Seated cable row" },           cue: { zh: "用背部拉动手柄,肘部贴近身体,胸口挺起", en: "Pull with the back, elbows close to the body, chest up" } },
+  lat_pull:     { name: { zh: "高位下拉", en: "Lat pulldown" },              cue: { zh: "把杠拉到锁骨附近,肩胛下沉,不要后仰借力", en: "Pull to the upper chest, depress the shoulder blades, avoid leaning back" } },
+  ohp:          { name: { zh: "哑铃推举", en: "Dumbbell shoulder press" },    cue: { zh: "核心收紧,手肘略低于手腕,推到头顶上方", en: "Brace the core, elbows slightly under wrists, press overhead" } },
+  lateral_raise:{ name: { zh: "侧平举", en: "Lateral raise" },              cue: { zh: "手肘微屈,抬到肩高即止,小重量慢速", en: "Slight elbow bend, raise to shoulder height, light and slow" } },
+  curl:         { name: { zh: "哑铃弯举", en: "Dumbbell curl" },              cue: { zh: "上臂贴紧身体,不甩动,离心段慢慢放下", en: "Upper arms still, no swinging, lower slowly" } },
+  pushdown:     { name: { zh: "绳索下压", en: "Triceps pushdown" },          cue: { zh: "肘部固定在身侧,只动前臂,底部完全伸直", en: "Elbows pinned to the sides, move the forearms only, lock out at the bottom" } },
+  plank:        { name: { zh: "平板支撑", en: "Plank" },                     cue: { zh: "身体一条直线,腹部收紧,不塌腰", en: "Straight body line, tight belly, no sagging hips" } }
+};
+
+/* ---------- 训练模板(按健身基础) ---------- */
+const SPLITS = {
+  none:  [ ["goblet","pushup","row","glute_bridge","plank"], ["rdl","db_press","lat_pull","lunge","lateral_raise"] ],
+  beg:   [ ["squat","bench","row","hip_thrust","plank"],      ["rdl","db_press","lat_pull","lunge","lateral_raise"] ],
+  mid:   [ ["bench","row","ohp","lat_pull","curl","pushdown"], ["squat","rdl","hip_thrust","leg_curl","bulgarian","plank"] ],
+  adv:   [ ["bench","incline","ohp","lateral_raise","pushdown"], ["deadlift","row","lat_pull","curl"], ["squat","rdl","leg_press","leg_curl","plank"], ["db_press","row","ohp","lat_pull","pushdown","curl"], ["hip_thrust","bulgarian","abduction","cable_kick","lunge"] ]
+};
+const LOWER = ["squat","goblet","rdl","deadlift","hip_thrust","glute_bridge","bulgarian","lunge","step_up","leg_press","leg_curl","abduction","cable_kick"];
+const EXP = {
+  none: { name: { zh: "零基础(从未系统训练)", en: "Complete beginner" }, days: 3 },
+  beg:  { name: { zh: "入门(半年以内)", en: "Beginner (under 6 months)" }, days: 3 },
+  mid:  { name: { zh: "进阶(半年至两年)", en: "Intermediate (6 months–2 years)" }, days: 4 },
+  adv:  { name: { zh: "熟练(两年以上)", en: "Advanced (2+ years)" }, days: 5 }
+};
+
+/* ---------- 生活方式:活动系数与饮食模板 ---------- */
+const LIFE = {
+  student: {
+    name: { zh: "大学生 · 食堂 + 外卖", en: "Student · canteen + takeaway" }, mult: 1.30,
+    slots: [
+      { key: "breakfast", share: 0.25, p: ["egg","soy_milk"],          c: ["steamed_bun","whole_wheat_bread","oats"], veg: false, oil: false, note: { zh: "宿舍 / 楼下早餐店", en: "Dorm or breakfast stall" } },
+      { key: "lunch",     share: 0.35, p: ["chicken_breast","pork_tenderloin","tofu"], c: ["rice_cooked","noodles_cooked"], veg: true, oil: true, note: { zh: "食堂窗口:一荤两素", en: "Canteen: one meat + two veg" } },
+      { key: "dinner",    share: 0.30, p: ["shrimp","white_fish","lean_beef"], c: ["rice_cooked","potato"], veg: true, oil: true, note: { zh: "外卖选清蒸 / 烤 / 卤类", en: "Takeaway: steamed, grilled or braised" } },
+      { key: "snack",     share: 0.10, p: ["greek_yogurt","milk"],     c: ["banana"], veg: false, oil: false, note: { zh: "随身带,不额外下单", en: "Carry it with you, no extra order" } }
+    ],
+    tips: {
+      zh: ["食堂优先选一荤两素,荤菜选鸡胸、瘦肉、鸡蛋、鱼虾,少选油炸和红烧。","外卖选烤鸡胸、卤味、清蒸鱼,主食可以少点一些,饮料换成无糖茶或水。","每周固定做 1–2 次电饭煲一锅煮(鸡胸 + 蔬菜 + 糙米),省钱又省时间。"],
+      en: ["In the canteen, pick one meat dish and two vegetable dishes. Choose chicken breast, lean meat, eggs or fish; avoid fried and braised dishes.","For takeaway choose grilled chicken, braised or steamed fish. Eat slightly less staple food and swap soft drinks for water or unsweetened tea.","Once or twice a week, cook a rice-cooker meal (chicken breast, vegetables and brown rice). It's cheap and fast."]
+    }
+  },
+  blue: {
+    name: { zh: "蓝领打工 · 公司食堂 + 饭盒", en: "Blue-collar · company canteen + lunch box" }, mult: 1.45,
+    slots: [
+      { key: "breakfast", share: 0.25, p: ["egg","milk"],               c: ["steamed_bun","oats"], veg: false, oil: false, note: { zh: "出门前在家吃", en: "Eat at home before work" } },
+      { key: "lunch",     share: 0.35, p: ["chicken_breast","tofu","pork_tenderloin"], c: ["rice_cooked","sweet_potato"], veg: true, oil: true, note: { zh: "饭盒备餐,或食堂选蒸煮菜", en: "Prepared lunch box, or steamed and boiled dishes in the canteen" } },
+      { key: "dinner",    share: 0.30, p: ["egg","white_fish","lean_beef"], c: ["rice_cooked","potato"], veg: true, oil: true, note: { zh: "食堂或自炊,避开炸物", en: "Canteen or home cooking; skip fried food" } },
+      { key: "snack",     share: 0.10, p: ["egg","soy_milk"],           c: ["banana","sweet_potato"], veg: false, oil: false, note: { zh: "工间加餐,便宜又顶饱", en: "Mid-shift snack, cheap and filling" } }
+    ],
+    tips: {
+      zh: ["周末一次煮好鸡胸、卤蛋、豆腐,工作日直接加热,预算更可控。","食堂选荤菜优先蒸、炖,避开炸鸡腿和肥肉。","体力活消耗大,主食不宜随意减少,否则训练和恢复都会受影响。"],
+      en: ["Cook chicken breast, eggs and tofu in bulk on weekends. Reheat on weekdays to keep costs down.","In the canteen, choose steamed or stewed meat. Skip fried drumsticks and fatty cuts.","Physical work burns a lot of energy. Don't cut staple food carelessly, or training and recovery will suffer."]
+    }
+  },
+  solo: {
+    name: { zh: "独居脱产 · 自己做饭", en: "Living alone · cooking for yourself" }, mult: 1.25,
+    slots: [
+      { key: "breakfast", share: 0.25, p: ["greek_yogurt","egg"],       c: ["oats","whole_wheat_bread"], veg: false, oil: false, note: { zh: "燕麦碗或全麦三明治", en: "Oat bowl or whole-wheat sandwich" } },
+      { key: "lunch",     share: 0.35, p: ["chicken_breast","salmon","lean_beef"], c: ["rice_cooked","sweet_potato"], veg: true, oil: true, note: { zh: "备餐分装,冷藏 3–4 天内吃完", en: "Batch-cook and refrigerate; eat within 3–4 days" } },
+      { key: "dinner",    share: 0.30, p: ["salmon","shrimp","tofu"],   c: ["noodles_cooked","potato"], veg: true, oil: true, note: { zh: "轻松做,煎/蒸/拌都行", en: "Easy to make: pan-fried, steamed or tossed" } },
+      { key: "snack",     share: 0.10, p: ["greek_yogurt","milk"],      c: ["banana"], veg: false, oil: false, note: { zh: "训练前后可以吃", en: "Good before or after training" } }
+    ],
+    tips: {
+      zh: ["周日备餐 3–4 天的蛋白质和主食,分装冷藏,工作日直接加热。","三文鱼、虾、鸡胸、豆腐轮换着吃,减少吃腻后乱点外卖。","独居容易外卖叠加,建议每周至少 4 顿自己做。"],
+      en: ["On Sunday, prep 3–4 days of protein and staples, portion them and refrigerate. Reheat on weekdays.","Rotate salmon, shrimp, chicken and tofu so you don't get bored and reach for takeaway.","Living alone often means lots of takeaway. Aim to cook at least 4 meals a week."]
+    }
+  },
+  family: {
+    name: { zh: "成家立业 · 家庭烹饪 + 亲子饮食", en: "Family life · home cooking + kids" }, mult: 1.30,
+    slots: [
+      { key: "breakfast", share: 0.25, p: ["egg","milk"],               c: ["steamed_bun","oats"], veg: false, oil: false, note: { zh: "全家一起吃,孩子可加水果", en: "Family breakfast; add fruit for kids" } },
+      { key: "lunch",     share: 0.35, p: ["pork_tenderloin","chicken_breast","tofu"], c: ["rice_cooked","noodles_cooked"], veg: true, oil: true, note: { zh: "家常菜:少盐少油,先盛出自己的份", en: "Home cooking: low salt and oil; serve your own portion first" } },
+      { key: "dinner",    share: 0.30, p: ["salmon","lean_beef","tofu"], c: ["rice_cooked","sweet_potato"], veg: true, oil: true, note: { zh: "一锅多吃:主菜可以共享", en: "One pot, many plates: share the main dish" } },
+      { key: "snack",     share: 0.10, p: ["milk","greek_yogurt"],      c: ["banana"], veg: false, oil: false, note: { zh: "孩子与大人可以同吃", en: "Kids and adults can share" } }
+    ],
+    tips: {
+      zh: ["家人共享的菜先盛出自己的份量,避免边吃边多吃。","给孩子的饮食少盐少油,但保留蛋白质(蛋、鱼、豆制品)。孩子的热量需求请以医生或营养师的建议为准。","周末让家人一起做饭,训练安排在孩子午睡或家人散步的时段,更容易坚持。"],
+      en: ["Serve your own portion before sharing dishes to avoid eating more while you chat.","For kids, keep the food low in salt and oil but include protein (eggs, fish, soy). Follow a doctor or dietitian for their calorie needs.","Cook together on weekends, and schedule training during nap time or family walks. It's easier to keep up."]
+    }
+  }
+};
+
+/* ---------- 目标 ---------- */
+const GOALS = {
+  lean:    { name: { zh: "大肌肉(增肌)", en: "Build muscle" },                      delta: +0.10, pg: 1.8, reps: "6–10",  cardio: "build",
+             tip: { zh: "以多关节复合动作为主(卧推、深蹲、硬拉、划船),逐周加重。热量略高于消耗,体重增长控制在每周 0.25–0.5%。", en: "Focus on compound lifts (bench, squat, deadlift, row) and add load each week. Eat slightly above maintenance; gain about 0.25–0.5% body weight per week." }, extra: [] },
+  tone:    { name: { zh: "薄肌(塑形,匀称紧致)", en: "Lean & toned" },               delta: -0.10, pg: 2.0, reps: "10–15", cardio: "tone",
+             tip: { zh: "保持适度热量缺口,蛋白质充足,训练保留力量训练。目标是体脂降低、肌肉线条显现,而不是单纯变轻。", en: "Use a small calorie deficit, high protein and keep lifting. The aim is less fat and visible muscle, not just lower weight." }, extra: [] },
+  lose:    { name: { zh: "单纯减脂(变瘦)", en: "Fat loss only" },                    delta: -0.20, pg: 2.0, reps: "10–15", cardio: "lose",
+             tip: { zh: "热量缺口是减脂的关键,但每周减重不超过体重的 1%。蛋白质与力量训练能帮你尽量保住肌肉。", en: "A calorie deficit drives fat loss, but keep weekly loss under 1% of body weight. Protein and lifting help keep muscle." }, extra: [] },
+  glutes:  { name: { zh: "大屁股(臀部发展)", en: "Bigger glutes" },                  delta: 0.00, pg: 1.8, reps: "8–12",  cardio: "glutes",
+             tip: { zh: "臀部是大肌群,需要重负荷的髋伸展(臀推、罗马尼亚硬拉)加上外展与后踢做辅助。热量保持在维持水平,避免过度减脂。", en: "The glutes respond to heavy hip extension (hip thrust, RDL), with abduction and kickbacks as accessories. Eat around maintenance, not in a large deficit." }, extra: ["hip_thrust","cable_kick","abduction"] },
+  thick:   { name: { zh: "粗壮大腿(力量与围度)", en: "Thick, strong thighs" },         delta: +0.05, pg: 1.8, reps: "6–10",  cardio: "thighs_strong",
+             tip: { zh: "股四头肌与腘绳肌需要大重量训练(深蹲、腿举)。小幅热量盈余配合每周加重,更利于增加围度。", en: "Quads and hamstrings need heavy work (squats, leg press). A small surplus plus weekly load increases helps build girth." }, extra: ["leg_press"] },
+  shape:   { name: { zh: "匀称饱满大腿", en: "Balanced, full thighs" },                 delta: -0.05, pg: 1.9, reps: "12–15", cardio: "thighs_toned",
+             tip: { zh: "中等次数、较高组次的腿部训练(弓步、登阶、腿弯举),配合轻度热量缺口,让大腿线条更匀称。", en: "Mid-to-high rep leg work (lunges, step-ups, leg curls) with a small deficit gives even, shapely thighs." }, extra: ["step_up","leg_curl"] }
+};
+
+const DAYS_DEFAULT = { none: 3, beg: 3, mid: 4, adv: 5 };
+const DEF = { f_sex: "m", f_exp: "beg", f_life: "student", f_goal: "lean" };
+
+/* =====================================================================
+ *  工具函数
+ * ===================================================================== */
+let lang = (navigator.language || "zh").toLowerCase().startsWith("en") ? "en" : "zh";
+let week = 1;
+
+const $ = (s) => document.querySelector(s);
+const tr = (k, vars) => {
+  let s = I18N[lang][k];
+  if (s === undefined) s = I18N.zh[k];
+  if (typeof s !== "string") return s;
+  if (vars) for (const [a, b] of Object.entries(vars)) s = s.replaceAll("{" + a + "}", b);
+  return s;
+};
+const L = (o) => (o && (o[lang] !== undefined ? o[lang] : o.zh)) || "";
+const r0 = (x) => Math.round(x);
+const r1 = (x) => Math.round(x * 10) / 10;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+
+/* =====================================================================
+ *  计算引擎
+ * ===================================================================== */
+function bmiCategory(bmi) {
+  if (bmi < 18.5) return tr("bmi_low");
+  if (bmi < 24) return tr("bmi_normal");
+  if (bmi < 28) return tr("bmi_over");
+  return tr("bmi_obese");
+}
+
+function computePlan(input) {
+  const { sex, age, height, weight, bf, exp, life, goal, target, days } = input;
+  const h = height / 100;
+  const bmi = weight / (h * h);
+  const warnings = [];
+  const push = (key, vars) => {
+    const lv = I18N.zh[key].lv;
+    let text = I18N[lang][key].text;
+    if (vars) for (const [a, b] of Object.entries(vars)) text = text.replaceAll("{" + a + "}", b);
+    warnings.push({ lv, text });
+  };
+
+  /* 1. 基础代谢:有体脂率时用 Katch-McArdle(更贴近瘦体重),否则用 Mifflin-St Jeor */
+  let bmr, formula;
+  if (bf) {
+    const lbm = weight * (1 - bf / 100);
+    bmr = 370 + 21.6 * lbm;
+    formula = "katch";
+  } else {
+    bmr = 10 * weight + 6.25 * height - 5 * age + (sex === "m" ? 5 : -161);
+    formula = "mifflin";
+  }
+
+  /* 2. 活动系数 = 生活方式基础 + 每周训练天数 */
+  const mult = LIFE[life].mult + days * 0.02;
+  const tdee = bmr * mult;
+
+  /* 3. 目标热量 */
+  const G = GOALS[goal];
+  const rawTarget = tdee * (1 + G.delta);
+  const floor = sex === "m" ? 1500 : 1200;
+  let kcal = rawTarget;
+  if (kcal < floor) {
+    push("w_floor", { raw: r0(rawTarget), floor });
+    kcal = floor;
+  }
+
+  /* 4. 宏量营养素 */
+  const protein = weight * G.pg;
+  const fat = weight * 0.8;
+  let carbs = (kcal - protein * 4 - fat * 9) / 4;
+  carbs = Math.max(carbs, 50);
+
+  /* 5. 每周体重变化与预计时间 */
+  const weeklyKg = (kcal - tdee) * 7 / 7700; // 约 7700 kcal ≈ 1 kg 体脂
+  const weeklyPct = Math.abs(weeklyKg) / weight * 100;
+  let eta = null;
+  if (target && target < weight && weeklyKg < 0) {
+    eta = (weight - target) / Math.abs(weeklyKg);
+  }
+  if (target && target > weight && weeklyKg > 0) {
+    eta = (target - weight) / weeklyKg;
+  }
+
+  /* 6. 健康风险规则 */
+  if (bmi < 18.5) push("w_bmi_low", { bmi: r1(bmi) });
+  if (target) {
+    const tbmi = target / (h * h);
+    if (tbmi < 18.5) push("w_target_low", { bmi: r1(tbmi) });
+  }
+  if (weeklyKg < 0 && weeklyPct > 1) push("w_fast", { rate: r1(weeklyPct) });
+  if (bf && ((sex === "m" && bf < 10) || (sex === "f" && bf < 18))) push("w_bf_low", { bf: r1(bf) });
+  if ((goal === "lose" || goal === "tone") && bmi < 20) push("w_thin_lose");
+  if (bmi < 18.5 && (goal === "lean" || goal === "glutes" || goal === "thick")) push("w_thin_gain");
+  if (age < 18) push("w_minor");
+  if (age >= 60) push("w_senior");
+
+  return {
+    bmi, bmr, tdee, mult, formula, kcal, rawTarget, floor, protein, fat, carbs,
+    weeklyKg, weeklyPct, eta, G, warnings, goal, life, exp, days, sex, weight, height, age
+  };
+}
+
+/* =====================================================================
+ *  训练计划
+ * ===================================================================== */
+function buildWorkouts(plan) {
+  const { exp, days, goal } = plan;
+  const G = GOALS[goal];
+  const templates = SPLITS[exp];
+  const out = [];
+  for (let i = 0; i < days; i++) {
+    let ids = templates[i % templates.length].slice();
+    // 新手把复杂动作换成更容易掌握的版本
+    if (exp === "none") ids = ids.map(x => ({ squat: "goblet", bench: "pushup", hip_thrust: "glute_bridge", deadlift: "rdl" }[x] || x));
+    const isLower = ids.some(x => LOWER.includes(x));
+    // 目标附加动作:只加在下肢日,避免重复
+    if (isLower && G.extra.length) {
+      for (const x of G.extra) if (!ids.includes(x)) ids.splice(ids.length - 1, 0, x);
+    }
+    // 限制单次动作数量
+    ids = ids.slice(0, 6);
+    out.push({ ids, lower: isLower });
+  }
+  return out;
+}
+
+function trainingWeekLayout(days) {
+  // 把训练日尽量均匀地散布在一周的 7 天中
+  const slots = new Array(7).fill(null);
+  for (let i = 0; i < days; i++) slots[Math.floor(i * 7 / days)] = i;
+  return slots;
+}
+
+function setsReps(plan, w, id) {
+  const base = plan.exp === "none" ? 2 : 3;
+  let sets;
+  if (w === 4) sets = Math.max(2, base - 1);
+  else sets = base + (w >= 2 && plan.exp !== "none" ? 1 : 0);
+  const G = plan.G;
+  const reps = id === "plank" ? { zh: "30–60 秒", en: "30–60 s" } : { zh: G.reps, en: G.reps };
+  return { sets, reps: L(reps) };
+}
+
+/* =====================================================================
+ *  饮食规划:按生活方式生成三餐 + 加餐,蛋白质欠账顺延到后面的餐次
+ * ===================================================================== */
+function buildDay(plan, dayIdx) {
+  const life = LIFE[plan.life];
+  let pLeft = plan.protein;
+  let shareLeft = 1;
+  const out = [];
+  for (const s of life.slots) {
+    const kTarget = plan.kcal * s.share;
+    const pTarget = pLeft * (s.share / shareLeft);
+    shareLeft -= s.share;
+
+    const pid = s.p[dayIdx % s.p.length];
+    const cid = s.c[dayIdx % s.c.length];
+    const pf = FOODS[pid];
+    const cf = FOODS[cid];
+
+    const items = [];
+    let k = 0, p = 0, c = 0, f = 0;
+
+    const pg = clamp(pTarget * 100 / pf.p, 40, pf.max);
+    items.push({ name: pf.name, g: r0(pg) });
+    k += pg * pf.k / 100; p += pg * pf.p / 100; c += pg * pf.c / 100; f += pg * pf.f / 100;
+
+    if (s.veg) {
+      items.push({ name: VEG.name, g: VEG.g });
+      k += VEG.k; p += VEG.p;
+    }
+    if (s.oil) {
+      items.push({ name: OIL.name, g: OIL.g });
+      k += OIL.k; f += OIL.g;
+    }
+
+    const rem = Math.max(0, kTarget - k);
+    const cg = clamp(rem * 100 / cf.k, 0, cf.max);
+    items.push({ name: cf.name, g: r0(cg) });
+    k += cg * cf.k / 100; p += cg * cf.p / 100; c += cg * cf.c / 100; f += cg * cf.f / 100;
+
+    // 主食到达单餐上限后,用坚果补足剩余热量(单次不超过 30 g)
+    const rem2 = kTarget - k;
+    if (rem2 > 30) {
+      const nut = FOODS.almonds;
+      const ng = clamp(rem2 * 100 / nut.k, 0, nut.max);
+      items.push({ name: nut.name, g: r0(ng) });
+      k += ng * nut.k / 100; p += ng * nut.p / 100; c += ng * nut.c / 100; f += ng * nut.f / 100;
+    }
+
+    pLeft -= p;
+    out.push({ key: s.key, note: s.note, items, kcal: k, p, c, f });
+  }
+  return out;
+}
+
+/* =====================================================================
+ *  渲染
+ * ===================================================================== */
+function fillSelects() {
+  const OPT = {
+    f_sex:  [["m", { zh: "男", en: "Male" }], ["f", { zh: "女", en: "Female" }]],
+    f_exp:  Object.entries(EXP).map(([k, v]) => [k, v.name]),
+    f_life: Object.entries(LIFE).map(([k, v]) => [k, v.name]),
+    f_goal: Object.entries(GOALS).map(([k, v]) => [k, v.name])
+  };
+  for (const [id, list] of Object.entries(OPT)) {
+    const el = $("#" + id);
+    const cur = el.value || DEF[id];
+    el.innerHTML = list.map(([v, n]) => `<option value="${v}">${L(n)}</option>`).join("");
+    el.value = cur;
+  }
+}
+
+function applyStaticI18n() {
+  document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+  document.title = lang === "zh"
+    ? "Fit & Fuel · 健身与营养规划"
+    : "Fit & Fuel · Training & Nutrition Planner";
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = tr(el.dataset.i18nPh); });
+  $("#langBtn").textContent = tr("lang_btn");
+  document.querySelector(".fine").textContent = tr("fine");
+  document.querySelector(".sub").textContent = tr("subtitle");
+  fillSelects();
+}
+
+function readInput() {
+  const v = (id) => $("#" + id).value;
+  const num = (id) => { const s = v(id).trim(); return s === "" ? null : Number(s); };
+  const o = {
+    sex: v("f_sex"), age: num("f_age"), height: num("f_height"), weight: num("f_weight"),
+    bf: num("f_bf"), exp: v("f_exp"), life: v("f_life"), goal: v("f_goal"),
+    target: num("f_target"), days: num("f_days")
+  };
+  const inRange = (x, a, b) => x !== null && !Number.isNaN(x) && x >= a && x <= b;
+  const requiredOk = inRange(o.age, 14, 90) && inRange(o.height, 120, 230) && inRange(o.weight, 30, 250) && inRange(o.days, 2, 6);
+  if (!requiredOk) return { error: "required" };
+  const optionalOk = (o.bf === null || inRange(o.bf, 3, 60)) && (o.target === null || inRange(o.target, 30, 250));
+  if (!optionalOk) return { error: "optional" };
+  return o;
+}
+
+function render() {
+  const out = $("#out");
+  const input = readInput();
+  if (input.error) {
+    out.innerHTML = `<div class="hero"><h2>${tr("title")}</h2><p>${tr(input.error === "required" ? "err_required" : "err_optional")}</p></div>`;
+    return;
+  }
+  const plan = computePlan(input);
+  const workouts = buildWorkouts(plan);
+  const layout = trainingWeekLayout(plan.days);
+  const G = plan.G;
+  const bmiLabel = bmiCategory(plan.bmi);
+
+  /* ---- 概览卡片 ---- */
+  const changeSign = plan.weeklyKg < -0.005 ? "−" : plan.weeklyKg > 0.005 ? "+" : "±";
+  const changeTxt = `${changeSign}${Math.abs(plan.weeklyKg).toFixed(2)} kg`;
+  const cardioText = I18N[lang].cardio_detail[G.cardio];
+  const stats = `
+    <div class="stats">
+      <div class="stat"><div class="k">${tr("s_bmi")}</div><div class="v">${r1(plan.bmi)}</div><div class="d">${bmiLabel}</div></div>
+      <div class="stat"><div class="k">${tr("s_bmr")}</div><div class="v">${r0(plan.bmr)}<small>${tr("kcal_unit")}</small></div><div class="d">${plan.formula === "katch" ? tr("formula_katch") : tr("formula_mifflin")}</div></div>
+      <div class="stat"><div class="k">${tr("s_tdee")}</div><div class="v">${r0(plan.tdee)}<small>${tr("kcal_unit")}</small></div><div class="d">× ${plan.mult.toFixed(2)}</div></div>
+      <div class="stat"><div class="k">${tr("s_kcal")}</div><div class="v">${r0(plan.kcal)}<small>${tr("kcal_unit")}</small></div><div class="d">${L(G.name)}</div></div>
+      <div class="stat"><div class="k">${tr("s_protein")}</div><div class="v">${r0(plan.protein)}<small>g</small></div><div class="d">${plan.G.pg} g/kg</div></div>
+      <div class="stat"><div class="k">${tr("s_carb")}</div><div class="v">${r0(plan.carbs)}<small>g</small></div><div class="d">${tr("s_fat")} ${r0(plan.fat)} g</div></div>
+      <div class="stat"><div class="k">${tr("s_change")}</div><div class="v">${changeTxt}<small>${tr("per_week")}</small></div><div class="d">${r1(plan.weeklyPct)}% ${tr("per_week")}</div></div>
+      ${plan.eta !== null ? `<div class="stat"><div class="k">${tr("s_eta")}</div><div class="v">${r0(plan.eta)}<small>${tr("weeks_unit")}</small></div><div class="d">${tr("est_note")}</div></div>` : ""}
+    </div>`;
+
+  /* ---- 健康提示 ---- */
+  const warnHtml = plan.warnings.length
+    ? `<div class="warns">${plan.warnings.map(w => `<div class="warn ${w.lv === "danger" ? "danger" : w.lv === "warn" ? "warn-lv" : "info"}"><b>${w.lv === "danger" ? "!!" : w.lv === "warn" ? "!" : "i"}</b><span>${w.text}</span></div>`).join("")}</div>`
+    : `<div class="warns"><div class="warn info"><b>✓</b><span>${tr("no_warn")}</span></div></div>`;
+
+  /* ---- 训练计划 ---- */
+  const weekTabs = [1, 2, 3, 4].map(w => `<button class="tab${w === week ? " on" : ""}" data-week="${w}" type="button">${tr("week_n", { n: w })}</button>`).join("");
+  const dayCells = layout.map((wi, di) => {
+    const dn = tr("day_names")[di];
+    if (wi === null) {
+      return `<div class="day rest"><div class="dn">${dn}</div><div class="dw">${tr("rest")}</div></div>`;
+    }
+    const wk = workouts[wi];
+    const lines = wk.ids.map(id => {
+      const sr = setsReps(plan, week, id);
+      return `<li><span class="sr">${sr.sets}×${sr.reps}</span>${L(EX[id].name)}<span class="cue">${L(EX[id].cue)}</span></li>`;
+    }).join("");
+    const titles = plan.exp === "adv"
+      ? [["Push","推"],["Pull","拉"],["Legs","腿"],["Upper","上肢"],["Lower","下肢"]][wi % 5]
+      : plan.exp === "mid"
+        ? [["Upper","上肢"],["Lower","下肢"]][wi % 2]
+        : [["Full body A","全身 A"],["Full body B","全身 B"]][wi % 2];
+    return `<div class="day"><div class="dn">${dn}</div><div class="dw">${lang === "zh" ? titles[1] : titles[0]}</div><ul>${lines}</ul></div>`;
+  }).join("");
+
+  const progression = `<ul class="tips">${tr("week_desc").map((d, i) => `<li><b>${tr("week_n", { n: i + 1 })}</b>:${d}</li>`).join("")}</ul>`;
+
+  const cardioNote = `<ul class="tips"><li>${tr("cardio_label")}:${cardioText}</li><li>${tr("deload_note")}</li></ul>`;
+
+  /* ---- 饮食 ---- */
+  const day0 = buildDay(plan, 0);
+  const slotName = (k) => tr("slot_" + k);
+  const sampleRows = day0.map(s => `
+    <tr>
+      <td><b>${slotName(s.key)}</b><div class="meal-note">${L(s.note)}</div></td>
+      <td>${s.items.map(it => `${L(it.name)} <span class="g">${it.g}g</span>`).join("<br>")}</td>
+      <td class="num">${r0(s.kcal)}<br><span class="g">${tr("s_protein")} ${r0(s.p)}g</span></td>
+    </tr>`).join("");
+  const dayKcal = day0.reduce((a, s) => a + s.kcal, 0);
+  const dayP = day0.reduce((a, s) => a + s.p, 0);
+  const sampleTable = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>${lang === "zh" ? "餐次" : "Meal"}</th><th>${lang === "zh" ? "食物与克重(生重/熟重以标注为准)" : "Foods and weights (as labelled)"}</th><th>${lang === "zh" ? "热量 / 蛋白" : "kcal / protein"}</th></tr></thead>
+      <tbody>${sampleRows}
+        <tr><td><b>${tr("day_total")}</b></td><td></td><td class="num"><b>${r0(dayKcal)}</b> / ${r0(dayP)}g<br><span class="g">${tr("total")} · ${tr("s_kcal")} ${r0(plan.kcal)}</span></td></tr>
+      </tbody>
+    </table></div>`;
+
+  const rotRows = [0,1,2,3,4,5,6].map(d => {
+    const day = buildDay(plan, d);
+    const nm = (s) => s.items.filter(i => i.name !== VEG.name && i.name !== OIL.name).map(i => L(i.name)).join(" + ");
+    return `<tr><td>${tr("day_names")[d]}</td><td>${nm(day[0])}</td><td>${nm(day[1])}</td><td>${nm(day[2])}</td><td>${nm(day[3])}</td><td class="num">${r0(day.reduce((a, s) => a + s.kcal, 0))}</td></tr>`;
+  }).join("");
+  const rotTable = `
+    <div class="table-wrap"><table class="rot">
+      <thead><tr><th></th><th>${tr("slot_breakfast")}</th><th>${tr("slot_lunch")}</th><th>${tr("slot_dinner")}</th><th>${tr("slot_snack")}</th><th>kcal</th></tr></thead>
+      <tbody>${rotRows}</tbody>
+    </table></div>`;
+
+  const formulaText = plan.formula === "katch" ? tr("formula_katch") : tr("formula_mifflin");
+  const deltaTxt = `${G.delta >= 0 ? "+" : "−"}${Math.abs(G.delta * 100)}%`;
+  const why = tr("why_text", { formula: formulaText, mult: plan.mult.toFixed(2), delta: deltaTxt, pg: G.pg });
+
+  out.innerHTML = `
+    <div class="hero">
+      <h2>${L(LIFE[plan.life].name)} · ${L(G.name)}</h2>
+      <p>${L(EXP[plan.exp].name)} · ${plan.days}×/${lang === "zh" ? "周" : "wk"} · ${plan.sex === "m" ? tr("male") : tr("female")} · ${plan.age} · ${plan.height} cm · ${plan.weight} kg${plan.bf ? " · " + plan.bf + "%" : ""}</p>
+      <p style="margin-top:10px;color:#c3cdc9">${L(G.tip)}</p>
+    </div>
+
+    <h2 style="font-size:12px;letter-spacing:.14em;color:#8ea29b;text-transform:uppercase;margin:18px 4px 0;font-weight:500">${tr("summary")}</h2>
+    ${stats}
+    <section class="block" style="margin-top:4px"><h2>${tr("warn_title")}</h2>${warnHtml}
+      <p class="list-note" style="margin-top:8px"><b>${tr("why")}</b>:${why}</p>
+    </section>
+
+    <section class="block"><h2><span class="no">${tr("train_no")}</span>${tr("train")}</h2>
+      <p class="lede">${tr("week_n", { n: week })} · ${tr("week_desc")[week - 1]}</p>
+      <div class="tabs">${weekTabs}</div>
+      <div class="week">${dayCells}</div>
+      ${progression}
+      ${cardioNote}
+    </section>
+
+    <section class="block"><h2><span class="no">${tr("nutr_no")}</span>${tr("nutr")}</h2>
+      <p class="lede">${L(LIFE[plan.life].name)} · ${tr("s_kcal")} ${r0(plan.kcal)} kcal · ${tr("s_protein")} ${r0(plan.protein)} g · ${tr("s_carb")} ${r0(plan.carbs)} g · ${tr("s_fat")} ${r0(plan.fat)} g</p>
+      <h3 style="font-size:13px;margin:12px 0 6px">${tr("sample_day")}</h3>
+      ${sampleTable}
+      <h3 style="font-size:13px;margin:18px 0 6px">${tr("rotation")}</h3>
+      ${rotTable}
+      <h3 style="font-size:13px;margin:18px 0 6px">${tr("tips_life")}</h3>
+      <ul class="tips">${LIFE[plan.life].tips[lang].map(t => `<li>${t}</li>`).join("")}</ul>
+      <h3 style="font-size:13px;margin:18px 0 6px">${tr("tips_goal")}</h3>
+      <ul class="tips"><li>${L(G.tip)}</li></ul>
+    </section>
+
+    <p class="foot">${tr("foot")}</p>
+    <p class="foot">${tr("fine")}</p>`;
+
+  out.querySelectorAll("[data-week]").forEach(b => b.addEventListener("click", () => {
+    week = Number(b.dataset.week);
+    render();
+  }));
+}
+
+/* =====================================================================
+ *  事件绑定
+ * ===================================================================== */
+$("#langBtn").addEventListener("click", () => {
+  lang = lang === "zh" ? "en" : "zh";
+  applyStaticI18n();
+  render();
+});
+$("#form").addEventListener("input", (e) => {
+  if (e.target.id === "f_exp") $("#f_days").value = DAYS_DEFAULT[$("#f_exp").value];
+  render();
+});
+$("#form").addEventListener("change", render);
+
+applyStaticI18n();
+$("#f_exp").value = DEF.f_exp;
+$("#f_days").value = DAYS_DEFAULT[DEF.f_exp];
+render();
+</script>
+</body>
+</html>
